@@ -38,7 +38,7 @@ jobs:
       - name: Verificar estructura
         run: ls -la src/
 
-      - name: Verificar conexión y tablas
+      - name: Verificar conexión
         run: node src/app.js &
         env:
           PORT: 3000
