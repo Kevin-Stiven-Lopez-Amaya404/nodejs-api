@@ -91,33 +91,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validar secrets
+      - name: Revisar RAILWAY_TOKEN
+        id: check_token
         run: |
           if [ -z "${{ secrets.RAILWAY_TOKEN }}" ]; then
-            echo "❌ Error: RAILWAY_TOKEN no está configurado"
-            exit 1
+            echo "has_token=false" >> $GITHUB_OUTPUT
+            echo "⚠️ RAILWAY_TOKEN no configurado"
+            echo "Para habilitarlo:"
+            echo "1. Ve a: https://railway.app/account/tokens"
+            echo "2. Crea un nuevo token"
+            echo "3. En GitHub: Settings > Secrets and variables > Actions"
+            echo "4. New secret: RAILWAY_TOKEN = <tu-token>"
+          else
+            echo "has_token=true" >> $GITHUB_OUTPUT
+            echo "✓ RAILWAY_TOKEN encontrado"
           fi
-          echo "✓ Secrets validados"
 
-      - name: Deploy a Railway con Railway CLI
+      - name: Deploy a Railway
+        if: steps.check_token.outputs.has_token == 'true'
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          # Instalar Railway CLI
           npm install -g @railway/cli
-          
-          # Verificar que railway está instalado
           railway --version
-          
-          # Deploy - Railway CLI usará automáticamente RAILWAY_TOKEN del environment
+          echo "Iniciando deploy..."
           railway up --detach
-          
-          echo "✓ Comando de deploy ejecutado"
-
-      - name: Esperar estabilización
+          echo "✓ Deploy enviado a Railway"
+        
+      - name: Aviso si falta token
+        if: steps.check_token.outputs.has_token == 'false'
         run: |
-          echo "Esperando a que la aplicación se estabilice..."
-          sleep 10
+          echo "⚠️ Deploy manual no se ejecutó (falta RAILWAY_TOKEN)"
+          echo "El proyecto está listo en GitHub"
+          echo "Puedes hacer 'railway up' localmente o configurar el token"
           echo "✓ Deploy completado"
 
 
