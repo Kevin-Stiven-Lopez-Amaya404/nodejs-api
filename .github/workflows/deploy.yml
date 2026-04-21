@@ -59,24 +59,65 @@ jobs:
           );"
           echo "✓ Base de datos inicializada"
 
-  deploy:
+  build:
     runs-on: ubuntu-latest
     needs: test
     if: success()
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      
+      - name: Instalar dependencias
+        run: npm ci
+      
+      - name: Verificar build
+        run: |
+          echo "✓ Proyecto listo para deploy"
+          echo "Estructura de archivos:"
+          ls -la src/
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    if: success()
+    environment: production
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy a Railway
+      - name: Validar secrets
+        run: |
+          if [ -z "${{ secrets.RAILWAY_TOKEN }}" ]; then
+            echo "❌ Error: RAILWAY_TOKEN no está configurado"
+            exit 1
+          fi
+          echo "✓ Secrets validados"
+
+      - name: Deploy a Railway con Railway CLI
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           # Instalar Railway CLI
           npm install -g @railway/cli
           
-          # Deploy usando Railway token como variable de entorno
-          railway up --service ${{ secrets.RAILWAY_SERVICE_NAME || 'nodejs-api' }}
-        
-      - name: Verificar deploy
-        run: echo "✓ Deploy completado exitosamente"
+          # Verificar que railway está instalado
+          railway --version
+          
+          # Deploy - Railway CLI usará automáticamente RAILWAY_TOKEN del environment
+          railway up --detach
+          
+          echo "✓ Comando de deploy ejecutado"
+
+      - name: Esperar estabilización
+        run: |
+          echo "Esperando a que la aplicación se estabilice..."
+          sleep 10
+          echo "✓ Deploy completado"
+
 

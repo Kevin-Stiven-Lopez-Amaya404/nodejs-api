@@ -20,18 +20,31 @@ app.use((err, _req, res, _next) => {
 });
 
 const PORT = process.env.PORT || 3000;
+let dbInitialized = false;
 
-// ── Start server with DB initialization ──────────────
-const startServer = async () => {
-  try {
-    console.log('Inicializando base de datos...');
-    await initDB();
-    console.log('Base de datos inicializada correctamente');
-    app.listen(PORT, () => console.log(`Servidor corriendo en el puerto ${PORT}`));
-  } catch (error) {
-    console.error('Error al iniciar el servidor:', error);
-    process.exit(1);
+// ── Initialize DB on first request ──────────────────────
+const ensureDBInit = async () => {
+  if (!dbInitialized) {
+    try {
+      console.log('Inicializando base de datos...');
+      await initDB();
+      console.log('✓ Base de datos inicializada correctamente');
+      dbInitialized = true;
+    } catch (error) {
+      console.warn('⚠️ Base de datos no disponible aún:', error.message);
+      setTimeout(ensureDBInit, 5000); // Reintentar en 5 segundos
+    }
   }
+};
+
+// ── Start server ────────────────────────────────────────
+const startServer = () => {
+  app.listen(PORT, () => {
+    console.log(`✓ Servidor corriendo en el puerto ${PORT}`);
+    console.log(`✓ Ambiente: ${process.env.NODE_ENV || 'development'}`);
+    // Iniciar BD en background (no bloquea el servidor)
+    ensureDBInit().catch(err => console.warn('Error en inicialización de BD:', err));
+  });
 };
 
 startServer();
