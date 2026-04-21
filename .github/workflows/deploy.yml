@@ -67,19 +67,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
       - name: Deploy a Railway
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
+          # Instalar Railway CLI
           npm install -g @railway/cli
-          railway link --token $RAILWAY_TOKEN
-          railway up --service ${{ secrets.RAILWAY_SERVICE_NAME || 'nodejs-api' }} --environment production
-
+          
+          # Deploy usando Railway token como variable de entorno
+          railway up --service ${{ secrets.RAILWAY_SERVICE_NAME || 'nodejs-api' }}
+        
       - name: Verificar deploy
         run: echo "✓ Deploy completado exitosamente"
 
