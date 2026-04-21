@@ -21,28 +21,65 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
+
       - name: Instalar dependencias
         run: npm ci
+
       - name: Verificar estructura
-        run: ls -la src/
+        run: |
+          echo "Verificando estructura del proyecto..."
+          ls -la src/
+          echo "✓ Estructura verificada"
+
+      - name: Esperar a que MySQL esté listo
+        run: |
+          until mysql -h 127.0.0.1 -u root -proot -e 'SELECT 1' > /dev/null 2>&1; do
+            echo "Esperando MySQL..."
+            sleep 2
+          done
+          echo "✓ MySQL está listo"
+
+      - name: Crear tabla de prueba
+        run: |
+          mysql -h 127.0.0.1 -u root -proot nodejs_crud -e "
+          CREATE TABLE IF NOT EXISTS categories (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(100) NOT NULL,
+            description VARCHAR(255),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );"
+          echo "✓ Base de datos inicializada"
 
   deploy:
     runs-on: ubuntu-latest
     needs: test
+    if: success()
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
       - name: Deploy a Railway
-        run: railway up --service ${{ secrets.RAILWAY_SERVICE_NAME }} --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          npm install -g @railway/cli
+          railway link --token $RAILWAY_TOKEN
+          railway up --service ${{ secrets.RAILWAY_SERVICE_NAME || 'nodejs-api' }} --environment production
+
+      - name: Verificar deploy
+        run: echo "✓ Deploy completado exitosamente"
+

@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
-const app     = express();
+const initDB = require('./config/initDB');
+const app = express();
 
 app.use(express.json());
 
@@ -19,4 +20,18 @@ app.use((err, _req, res, _next) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor corriendo en el puerto ${PORT}`));
+
+// ── Start server with DB initialization ──────────────
+const startServer = async () => {
+  try {
+    console.log('Inicializando base de datos...');
+    await initDB();
+    console.log('Base de datos inicializada correctamente');
+    app.listen(PORT, () => console.log(`Servidor corriendo en el puerto ${PORT}`));
+  } catch (error) {
+    console.error('Error al iniciar el servidor:', error);
+    process.exit(1);
+  }
+};
+
+startServer();
